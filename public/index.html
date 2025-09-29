@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>悬浮窗+自动更新HTML（无提示版）</title>
+    <title>悬浮窗+任意HTML自动更新（无提示版）</title>
     <style>
         /* 主体内容样式 */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
@@ -279,7 +279,7 @@
                         <div class="notice-item">
                             <div class="notice-title">V1.0 功能更新公告</div>
                             <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
-                            <div>1. 支持任意HTML文件自动加载；<br>2. 上传新文件后页面自动更新，无任何提示；<br>3. 资源路径自动修复，确保图片、脚本正常运行。</div>
+                            <div>1. 支持任意HTML文件加载与执行；<br>2. 自动修复资源路径，确保图片、脚本正常加载；<br>3. 无更新提示，界面更简洁。</div>
                         </div>
                     </div>
                     <div class="content-panel" id="panelSetting">
@@ -451,7 +451,7 @@
         })();
     </script>
 
-    <!-- 自动更新HTML逻辑（无提示，上传新文件自动加载） -->
+    <!-- 任意HTML文件加载逻辑（无提示版） -->
     <script>
         const container = document.getElementById('latest-html-container');
         // GitHub仓库信息（替换为你的仓库）
@@ -530,7 +530,7 @@
             .catch(err => console.error(err));
         }
 
-        // WebSocket监听更新（上传新文件自动加载）
+        // WebSocket监听更新
         function initWebSocket() {
             const ws = new WebSocket(WS_URL);
             ws.onopen = () => console.log('自动更新连接成功，等待新文件上传');
