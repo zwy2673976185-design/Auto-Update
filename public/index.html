@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>悬浮窗+自动更新（稳定基础版）</title>
+    <title>悬浮窗+自动更新（最终稳定版）</title>
     <style>
         /* 主体内容容器 */
         #latest-html-container {
@@ -75,37 +75,68 @@
     </div>
 
     <script>
-        // 悬浮窗核心逻辑
+        // 悬浮窗核心交互
         const floatBtn = document.getElementById('floatBtn');
         const floatWindow = document.getElementById('floatWindow');
         const modalBack = document.getElementById('modalBack');
 
-        // 显示/隐藏悬浮窗
         floatBtn.addEventListener('click', () => {
             floatWindow.classList.toggle('active');
         });
 
-        // 关闭悬浮窗
         modalBack.addEventListener('click', () => {
             floatWindow.classList.remove('active');
         });
 
-        // 自动更新逻辑
+        // 自动更新逻辑（修复加载卡住问题）
         const container = document.getElementById('latest-html-container');
         const notice = document.getElementById('update-notice');
         const RENDER_DOMAIN = 'https://auto-update-z5j4.onrender.com';
 
-        // 加载HTML内容
-        function loadHtml(content) {
-            container.innerHTML = content;
-            notice.style.display = 'block';
-            setTimeout(() => notice.style.display = 'none', 3000);
+        // 主动请求最新HTML（页面加载时立即执行）
+        function fetchLatestHtml() {
+            fetch(`${RENDER_DOMAIN}/get-latest-html`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.content) {
+                        container.innerHTML = data.content;
+                    }
+                })
+                .catch(err => {
+                    console.error('获取最新内容失败:', err);
+                });
         }
 
-        // WebSocket监听更新
-        let ws = new WebSocket(`wss://${RENDER_DOMAIN}/github-webhook`);
-        ws.onmessage = (e) => loadHtml(e.data);
-        ws.onclose = () => setTimeout(() => ws = new WebSocket(`wss://${RENDER_DOMAIN}/github-webhook`), 5000);
+        // WebSocket监听更新（增加重连和消息验证）
+        function initWebSocket() {
+            let ws = new WebSocket(`wss://${RENDER_DOMAIN}`);
+            ws.onopen = () => {
+                console.log('WebSocket连接成功');
+                ws.send(JSON.stringify({ type: 'get_latest' })); // 主动请求最新内容
+            };
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                if (data.type === 'new_html' && data.content) {
+                    container.innerHTML = data.content;
+                    notice.style.display = 'block';
+                    setTimeout(() => notice.style.display = 'none', 3000);
+                }
+            };
+            ws.onclose = () => {
+                console.log('WebSocket断开，5秒后重连');
+                setTimeout(initWebSocket, 5000);
+            };
+            ws.onerror = (err) => {
+                console.error('WebSocket错误:', err);
+                setTimeout(initWebSocket, 5000);
+            };
+        }
+
+        // 页面加载时初始化
+        window.addEventListener('load', () => {
+            fetchLatestHtml(); // 主动拉取最新内容
+            initWebSocket();  // 启动WebSocket监听
+        });
     </script>
 </body>
 </html>
