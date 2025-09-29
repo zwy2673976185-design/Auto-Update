@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>悬浮窗+持久化最新HTML</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            height: 100vh; 
+            overflow: hidden; 
+            position: relative; 
+            background: #fff; 
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        /* 最新HTML内容容器：层级低于悬浮窗 */
+        #latest-html-container {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            z-index: 1;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        /* 更新提示：层级高于内容，低于悬浮窗 */
+        #update-notice {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background: #2563eb;
+            color: #fff;
+            border-radius: 6px;
+            z-index: 99;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 最新HTML内容容器：所有上传的HTML都显示在这里 -->
+    <div id="latest-html-container">
+        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f5f5f5;">
+            <p style="font-size:16px; color:#666;">加载最新内容中...</p>
+        </div>
+    </div>
+
+    <!-- 更新提示 -->
+    <div id="update-notice">已更新到最新文件，正在显示...</div>
+
+    <!-- 悬浮窗（替换为你的悬浮窗JS链接） -->
+    <script>
+        // 防重复加载悬浮窗
+        if (!window.floatingWindowInjected) {
+            const floatScript = document.createElement('script');
+            floatScript.src = "https://zwy2673976185-design.github.io/floating-window.js2/floating-window.js";
+            floatScript.onload = () => {
+                console.log('悬浮窗加载成功（始终保留）');
+                if (typeof window.initFloatingWindow === 'function') {
+                    window.initFloatingWindow();
+                }
+            };
+            document.head.appendChild(floatScript);
+        }
+    </script>
+
+    <!-- 核心逻辑：持久化最新HTML + WebSocket监听更新 -->
+    <script>
+        const STORAGE_KEY = 'latest_uploaded_html';
+        const container = document.getElementById('latest-html-container');
+        const updateNotice = document.getElementById('update-notice');
+        // 替换为你的Render服务域名（如：auto-update-z5j4.onrender.com）
+        const RENDER_DOMAIN = 'https://auto-update-z5j4.onrender.com/'; 
+        const WS_URL = `wss://${RENDER_DOMAIN}`; // Render上WebSocket需用wss
+        const GET_LATEST_URL = `https://${RENDER_DOMAIN}/get-latest-html`;
+
+        // 页面加载时，优先显示本地缓存的最新HTML
+        function initLatestHtml() {
+            const localLatestHtml = localStorage.getItem(STORAGE_KEY);
+            if (localLatestHtml) {
+                renderHtml(localLatestHtml);
+            } else {
+                fetchLatestHtmlFromServer();
+            }
+        }
+
+        // 本地无缓存时，从服务器拉取最新HTML
+        function fetchLatestHtmlFromServer() {
+            fetch(GET_LATEST_URL)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.content) {
+                        renderHtml(data.content);
+                        localStorage.setItem(STORAGE_KEY, data.content);
+                    }
+                })
+                .catch(err => {
+                    container.innerHTML = `
+                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f5f5f5; color:#ff4444;">
+                            <p>连接服务器失败，请检查网络</p>
+                        </div>
+                    `;
+                });
+        }
+
+        // 渲染HTML并执行其中的脚本（确保上传的文件功能正常）
+        function renderHtml(htmlContent) {
+            container.innerHTML = htmlContent;
+            executeScriptsInContainer(container);
+        }
+
+        // 执行容器内的脚本（解决HTML中脚本不自动执行的问题）
+        function executeScriptsInContainer(container) {
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(oldScript => {
+                const newScript = document.createElement('script');
+                newScript.src = oldScript.src;
+                newScript.textContent = oldScript.textContent;
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+        }
+
+        // WebSocket监听更新（新文件上传时，覆盖旧内容）
+        function initWebSocket() {
+            const ws = new WebSocket(WS_URL);
+            ws.onopen = () => console.log('WebSocket连接成功，等待文件上传通知');
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'new_html' || data.type === 'init_latest') {
+                    updateNotice.style.display = 'block';
+                    localStorage.setItem(STORAGE_KEY, data.content);
+                    renderHtml(data.content);
+                    setTimeout(() => updateNotice.style.display = 'none', 3000);
+                }
+            };
+
+            ws.onclose = () => {
+                setTimeout(initWebSocket, 10000); // 断开后自动重连
+            };
+        }
+
+        // 页面加载完成后，初始化所有逻辑
+        window.addEventListener('load', () => {
+            initLatestHtml();
+            initWebSocket();
+        });
+    </script>
+</body>
+</html>
