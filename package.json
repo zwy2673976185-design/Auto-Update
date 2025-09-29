@@ -1,8 +1,11 @@
 {
-  "name": "auto-deploy-server",
+  "name": "upload-trigger-auto-update",
+  "version": "1.0.0",
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.0.1",
-    "node-fetch": "^2.6.7"
+    "ws": "^8.16.0",
+    "node-fetch": "^2.7.0"
+  },
+  "scripts": {
+    "start": "node server.js"
   }
 }
