@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>悬浮窗+HTML自动更新（index.html独立版）</title>
+    <title>悬浮窗+自动更新HTML（无提示版）</title>
     <style>
-        /* 1. 主体内容样式（用于显示上传的HTML，层级低于悬浮窗） */
+        /* 主体内容样式 */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
         body { 
             height: 100vh; 
@@ -23,20 +23,8 @@
             top: 0;
             left: 0;
         }
-        #update-notice {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 10px 20px;
-            background: #2563eb;
-            color: #fff;
-            border-radius: 6px;
-            z-index: 99;
-            display: none;
-        }
 
-        /* 2. 悬浮窗样式（完全保留原有可用样式，未修改） */
+        /* 悬浮窗样式（保留原有功能） */
         .float-btn {
             position: fixed;
             z-index: 1002;
@@ -195,24 +183,17 @@
     </style>
 </head>
 <body>
-    <!-- 1. 主体内容容器（上传的新HTML会显示在这里，不影响悬浮窗） -->
+    <!-- 主体内容容器 -->
     <div id="latest-html-container">
-        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f5f5f5;">
-            <p style="font-size:16px; color:#666;">加载最新内容中...</p>
-        </div>
+        <div style="width:100%; height:100%; background:#f5f5f5;"></div>
     </div>
 
-    <!-- 2. 更新提示（新HTML上传后自动显示） -->
-    <div id="update-notice">已更新到最新文件，正在显示...</div>
-
-    <!-- 3. 悬浮窗核心逻辑（完全保留原有可用功能，修复报错，独立运行） -->
+    <!-- 悬浮窗逻辑（保留原有功能） -->
     <script>
         (function() {
-            // 防止悬浮窗重复注入
             if (window.floatingWindowInjected) return;
             window.floatingWindowInjected = true;
 
-            let styleElement = null;
             const config = {
                 floatBtnSize: 60,
                 safeMargin: 20,
@@ -221,7 +202,6 @@
                 windowHeight: 250
             };
 
-            // 工具函数（提前定义，避免报错）
             const utils = {
                 formatTime: function(dateStr) {
                     try {
@@ -260,15 +240,12 @@
                 }
             };
 
-            // 创建悬浮窗DOM（原有结构，未修改）
             function createFloatElements() {
-                // 悬浮球
                 const floatBtn = document.createElement('button');
                 floatBtn.className = 'float-btn';
                 floatBtn.id = 'floatBtn';
                 document.body.appendChild(floatBtn);
 
-                // 悬浮窗口
                 const floatWindow = document.createElement('div');
                 floatWindow.className = 'float-window';
                 floatWindow.id = 'floatWindow';
@@ -283,8 +260,7 @@
                             <img src="https://img.icons8.com/ios-glyphs/30/666/user--v1.png" class="btn-icon" alt="我的">
                         </button>
                         <button class="func-btn" id="btnNotice">
-    <span>公告</span>
-    <!-- 已删除外部图标链接，仅保留文字 -->
+                            <span>公告</span>
                         </button>
                         <button class="func-btn" id="btnContact">
                             <span>联系作者</span>
@@ -303,12 +279,7 @@
                         <div class="notice-item">
                             <div class="notice-title">V1.0 功能更新公告</div>
                             <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
-                            <div>1. 新增“我的”“公告”“联系作者”“设置”4个功能按钮；<br>2. 悬浮球支持移动端拖拽，适配屏幕安全区；<br>3. 内容面板支持“返回主页面”，隐藏弹窗靠点击悬浮球。</div>
-                        </div>
-                        <div class="notice-item">
-                            <div class="notice-title">功能预告</div>
-                            <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
-                            <div>1. “我的”模块将新增个人信息编辑功能；<br>2. “设置”模块将支持悬浮球大小、弹窗位置自定义；<br>3. 后续将优化面板样式，增加更多实用功能。</div>
+                            <div>1. 支持任意HTML文件自动加载；<br>2. 上传新文件后页面自动更新，无任何提示；<br>3. 资源路径自动修复，确保图片、脚本正常运行。</div>
                         </div>
                     </div>
                     <div class="content-panel" id="panelSetting">
@@ -320,7 +291,6 @@
                 return { floatBtn, floatWindow };
             }
 
-            // 悬浮窗交互逻辑（原有功能，未修改）
             function initFloatFunctions(elements) {
                 const { floatBtn, floatWindow } = elements;
                 const modalBack = document.getElementById('modalBack');
@@ -334,7 +304,6 @@
                 const panelNotice = document.getElementById('panelNotice');
                 const panelSetting = document.getElementById('panelSetting');
 
-                // 状态变量
                 let btnIsDragging = false;
                 let btnDragStart = 0;
                 let btnStartX = 0;
@@ -348,10 +317,8 @@
                 let winOffsetX = 0;
                 let winOffsetY = 0;
                 let isInMainPanel = true; 
-                let lastActivePanel = null;
                 let currentWindowPos = utils.getDefaultWindowPos();
 
-                // 悬浮球初始位置（右下角）
                 function initBtnPosition() {
                     const windowWidth = document.documentElement.clientWidth;
                     const windowHeight = document.documentElement.clientHeight;
@@ -363,7 +330,6 @@
                     floatBtn.style.right = 'auto';
                 }
 
-                // 弹窗定位
                 function positionWindow() {
                     const boundedPos = utils.checkWindowBound(currentWindowPos.left, currentWindowPos.top);
                     currentWindowPos = boundedPos;
@@ -371,7 +337,6 @@
                     floatWindow.style.top = `${boundedPos.top}px`;
                 }
 
-                // 面板切换
                 function switchContentPanel(targetPanelId) {
                     funcButtons.style.display = 'none';
                     panelMy.classList.remove('active');
@@ -382,7 +347,6 @@
                     isInMainPanel = false;
                 }
 
-                // 返回主面板
                 function backToMainPanel() {
                     funcButtons.style.display = 'flex';
                     panelMy.classList.remove('active');
@@ -392,7 +356,6 @@
                     isInMainPanel = true;
                 }
 
-                // 悬浮球点击（显示/隐藏弹窗）
                 floatBtn.addEventListener('click', () => {
                     if (!btnIsDragging) {
                         floatWindow.classList.toggle('active');
@@ -400,16 +363,13 @@
                     }
                 });
 
-                // 返回按钮点击
                 modalBack.addEventListener('click', backToMainPanel);
 
-                // 功能按钮点击
                 btnMy.addEventListener('click', () => switchContentPanel('panelMy'));
                 btnNotice.addEventListener('click', () => switchContentPanel('panelNotice'));
                 btnContact.addEventListener('click', () => window.open('https://qzone.qq.com/2673976185', '_blank'));
                 btnSetting.addEventListener('click', () => switchContentPanel('panelSetting'));
 
-                // 移动端拖拽（原有逻辑，正常使用）
                 floatBtn.addEventListener('touchstart', (e) => {
                     btnDragStart = Date.now();
                     const touch = e.touches[0];
@@ -468,114 +428,129 @@
                     }
                 }, { passive: false });
 
-                // 窗口缩放定位
                 window.addEventListener('load', initBtnPosition);
                 window.addEventListener('resize', () => {
                     initBtnPosition();
                     if (floatWindow.classList.contains('active')) positionWindow();
                 });
 
-                // 初始化
                 backToMainPanel();
             }
 
-            // 初始化悬浮窗（页面加载自动运行）
             function initFloatingWindow() {
                 try {
                     const elements = createFloatElements();
                     initFloatFunctions(elements);
-                    console.log('悬浮窗初始化完成（原有功能正常）');
+                    console.log('悬浮窗初始化完成（功能正常）');
                 } catch (err) {
                     console.error('悬浮窗加载报错：', err);
                 }
             }
 
-            // 启动悬浮窗
             window.addEventListener('load', initFloatingWindow);
         })();
     </script>
 
-    <!-- 4. HTML自动更新逻辑（适配你的Render服务，无需修改） -->
+    <!-- 自动更新HTML逻辑（无提示，上传新文件自动加载） -->
     <script>
-        const STORAGE_KEY = 'latest_uploaded_html';
         const container = document.getElementById('latest-html-container');
-        const updateNotice = document.getElementById('update-notice');
-        // 你的Render服务域名（已确认正确，无需修改）
-        const RENDER_DOMAIN = 'auto-update-z5j4.onrender.com'; // 仅保留域名，无协议
-const WS_URL = `wss://${RENDER_DOMAIN}`; // 正确拼接：wss://auto-update-z5j4.onrender.com
-const GET_LATEST_URL = `https://${RENDER_DOMAIN}/get-latest-html`; // 接口路径也同步修正
+        // GitHub仓库信息（替换为你的仓库）
+        const GITHUB_REPO = 'zwy2673976185-design/Auto-Update'; 
+        const GITHUB_TOKEN = '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'; // 你的GitHub令牌
+        const RENDER_DOMAIN = 'auto-update-z5j4.onrender.com';
+        const WS_URL = `wss://${RENDER_DOMAIN}`;
 
-        // 优先加载本地缓存的HTML
-        function renderHtml(htmlContent) {
-    container.innerHTML = htmlContent;
-    // 执行所有脚本（包括内联和外部）
-    const scripts = container.querySelectorAll('script');
-    scripts.forEach(script => {
-        const newScript = document.createElement('script');
-        // 复制所有属性（如src、type）
-        Array.from(script.attributes).forEach(attr => {
-            newScript.setAttribute(attr.name, attr.value);
-        });
-        newScript.textContent = script.textContent;
-        script.parentNode.replaceChild(newScript, script);
-    });
-}
-
-        // 从服务器拉取最新HTML
-        function fetchLatestHtmlFromServer() {
-            fetch(GET_LATEST_URL)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.content) {
-                        renderHtml(data.content);
-                        localStorage.setItem(STORAGE_KEY, data.content);
-                    }
-                })
-                .catch(err => {
-                    const localCache = localStorage.getItem(STORAGE_KEY);
-                    if (localCache) {
-                        renderHtml(localCache);
-                    } else {
-                        container.innerHTML = `
-                            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f5f5f5; color:#ff4444;">
-                                <p>连接服务器失败，请检查网络</p>
-                            </div>
-                        `;
-                    }
-                });
-        }
-
-        // 渲染HTML并执行脚本
-        function renderHtml(htmlContent) {
-            container.innerHTML = htmlContent;
-            const scripts = container.querySelectorAll('script');
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement('script');
-                newScript.src = oldScript.src;
-                newScript.textContent = oldScript.textContent;
-                oldScript.parentNode.replaceChild(newScript, oldScript);
+        // 修复资源路径（将相对路径转为GitHub绝对路径）
+        function fixResourcePaths(htmlContent) {
+            // 修复图片路径
+            htmlContent = htmlContent.replace(/src="([^"]+)"/g, (match, src) => {
+                if (src.startsWith('http://') || src.startsWith('https://')) return match;
+                return `src="https://raw.githubusercontent.com/${GITHUB_REPO}/main/${src}"`;
             });
+            // 修复样式路径
+            htmlContent = htmlContent.replace(/href="([^"]+)"/g, (match, href) => {
+                if (href.startsWith('http://') || href.startsWith('https://')) return match;
+                return `href="https://raw.githubusercontent.com/${GITHUB_REPO}/main/${href}"`;
+            });
+            // 修复脚本路径
+            htmlContent = htmlContent.replace(/src="([^"]+)"/g, (match, src) => {
+                if (src.startsWith('http://') || src.startsWith('https://')) return match;
+                return `src="https://raw.githubusercontent.com/${GITHUB_REPO}/main/${src}"`;
+            });
+            return htmlContent;
         }
 
-        // WebSocket监听更新（上传新HTML自动触发）
+        // 渲染HTML并执行所有脚本
+        function renderHtml(htmlContent) {
+            try {
+                htmlContent = fixResourcePaths(htmlContent);
+                container.innerHTML = htmlContent;
+                // 执行所有脚本（包括内联和外部）
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(script => {
+                    const newScript = document.createElement('script');
+                    // 复制所有属性（如src、type、defer、async）
+                    Array.from(script.attributes).forEach(attr => {
+                        newScript.setAttribute(attr.name, attr.value);
+                    });
+                    newScript.textContent = script.textContent;
+                    script.parentNode.replaceChild(newScript, script);
+                });
+            } catch (err) {
+                console.error('HTML渲染失败：', err);
+            }
+        }
+
+        // 获取GitHub仓库中最新的HTML文件
+        function fetchLatestHtmlFromGitHub() {
+            fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents`, {
+                headers: {
+                    Authorization: `token ${GITHUB_TOKEN}`,
+                    Accept: 'application/vnd.github.v3+json'
+                }
+            })
+            .then(res => res.json())
+            .then(files => {
+                // 筛选出所有HTML文件
+                const htmlFiles = files.filter(file => file.name.endsWith('.html'));
+                if (htmlFiles.length === 0) {
+                    return;
+                }
+                // 加载最新的HTML文件（按更新时间排序）
+                htmlFiles.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                const latestHtmlFile = htmlFiles[0];
+                fetch(latestHtmlFile.download_url)
+                    .then(res => res.text())
+                    .then(htmlContent => {
+                        renderHtml(htmlContent);
+                        localStorage.setItem('latest_html_content', htmlContent);
+                    })
+                    .catch(err => console.error(err));
+            })
+            .catch(err => console.error(err));
+        }
+
+        // WebSocket监听更新（上传新文件自动加载）
         function initWebSocket() {
             const ws = new WebSocket(WS_URL);
             ws.onopen = () => console.log('自动更新连接成功，等待新文件上传');
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                if (data.type === 'new_html' || data.type === 'init_latest') {
-                    updateNotice.style.display = 'block';
-                    localStorage.setItem(STORAGE_KEY, data.content);
-                    renderHtml(data.content);
-                    setTimeout(() => updateNotice.style.display = 'none', 3000);
+                if (data.type === 'new_html') {
+                    fetchLatestHtmlFromGitHub();
                 }
             };
-            ws.onclose = () => setTimeout(initWebSocket, 5000); // 断开自动重连
+            ws.onclose = () => setTimeout(initWebSocket, 5000);
         }
 
-        // 启动自动更新逻辑
+        // 初始化
         window.addEventListener('load', () => {
-            initLatestHtml();
+            const cachedHtml = localStorage.getItem('latest_html_content');
+            if (cachedHtml) {
+                renderHtml(cachedHtml);
+            } else {
+                fetchLatestHtmlFromGitHub();
+            }
             initWebSocket();
         });
     </script>
