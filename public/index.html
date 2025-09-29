@@ -2,572 +2,110 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>悬浮窗+HTML自动更新（index.html独立版）</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>悬浮窗+自动更新（稳定基础版）</title>
     <style>
-        /* 1. 主体内容样式（用于显示上传的HTML，层级低于悬浮窗） */
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
-        body { 
-            height: 100vh; 
-            overflow: hidden; 
-            touch-action: none; 
-            position: relative; 
-            background: #fff; 
-        }
+        /* 主体内容容器 */
         #latest-html-container {
-            width: 100%;
-            height: 100%;
-            overflow-y: auto;
-            z-index: 1;
-            position: absolute;
-            top: 0;
-            left: 0;
+            width: 100%; height: 100vh; overflow-y: auto; position: absolute; top: 0; left: 0;
+            z-index: 1; background: #f5f5f5;
         }
+        /* 更新提示 */
         #update-notice {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 10px 20px;
-            background: #2563eb;
-            color: #fff;
-            border-radius: 6px;
-            z-index: 99;
-            display: none;
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            padding: 10px 20px; background: #2563eb; color: #fff; border-radius: 6px;
+            z-index: 99; display: none;
         }
-
-        /* 2. 悬浮窗样式（完全保留原有可用样式，未修改） */
+        /* 悬浮球 */
         .float-btn {
-            position: fixed;
-            z-index: 1002;
-            width: 60px;
-            height: 60px; 
-            border-radius: 0; 
-            border: 2px solid #fff; 
-            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3); 
-            cursor: pointer;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            background-image: url(https://i.imgs.ovh/2025/09/28/75fraO.jpeg);
-            background-color: #f0f0f0;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            padding: 0;
-            margin: 0;
-            border: none;
+            position: fixed; right: 20px; bottom: 20px;
+            width: 60px; height: 60px; border-radius: 50%;
+            background: url(https://i.imgs.ovh/2025/09/28/75fraO.jpeg) no-repeat center;
+            background-size: cover; border: none; box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            cursor: pointer; z-index: 1002;
         }
-        .float-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
-        }
+        /* 悬浮窗 */
         .float-window {
-            position: fixed;
-            z-index: 1001;
-            width: 280px;
-            height: 250px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 3px 15px rgba(0,0,0,0.2);
-            overflow: hidden;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            position: fixed; right: 20px; bottom: 100px;
+            width: 280px; height: 250px; background: #fff;
+            border-radius: 10px; box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            display: none; z-index: 1001;
         }
-        .float-window.active {
-            display: block;
-            opacity: 1;
-        }
+        .float-window.active { display: block; }
+        /* 悬浮窗头部 */
         .window-header {
-            padding: 12px 15px;
-            background: #2563eb;
-            color: white;
-            font-size: 15px;
-            font-weight: 500;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: move;
-            -webkit-tap-highlight-color: transparent;
-            height: 42px;
+            padding: 12px 15px; background: #2563eb; color: #fff;
+            display: flex; justify-content: space-between; align-items: center;
         }
         .modal-back {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 15px;
-            cursor: pointer;
-            padding: 3px 6px;
-            border-radius: 4px;
-            transition: background 0.2s ease;
-            display: none;
-            -webkit-tap-highlight-color: transparent;
+            background: transparent; border: none; color: #fff;
+            font-size: 18px; cursor: pointer;
         }
-        .modal-back:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
+        /* 功能按钮区 */
         .func-buttons {
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: calc(250px - 42px);
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            padding: 10px; height: calc(100% - 42px); overflow-y: auto;
         }
         .func-btn {
-            padding: 10px 12px;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            background: #f8f9fa;
-            font-size: 13px;
-            color: #333;
-            text-align: left;
-            cursor: pointer;
-            transition: background 0.2s ease, border-color 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            -webkit-tap-highlight-color: transparent;
-            border: none;
-        }
-        .func-btn:hover, .func-btn:active {
-            background: #f1f3f5;
-            border-color: #ddd;
-        }
-        .btn-icon {
-            width: 18px;
-            height: 18px;
-            opacity: 0.7;
-        }
-        .content-panel {
-            padding: 10px;
-            max-height: calc(250px - 42px);
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            display: none;
-        }
-        .content-panel.active {
-            display: block;
-        }
-        .user-name {
-            font-size: 15px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 6px;
-        }
-        .user-desc {
-            font-size: 12px;
-            color: #666;
-            line-height: 1.5;
-        }
-        .notice-item {
-            font-size: 12px;
-            color: #333;
-            margin-bottom: 10px;
-            line-height: 1.5;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
-        .notice-item:last-child {
-            border-bottom: none;
-            margin-bottom: 3px;
-            padding-bottom: 0;
-        }
-        .notice-title {
-            font-weight: 500;
-            margin-bottom: 3px;
-            color: #2563eb;
-        }
-        .notice-time {
-            font-size: 10px;
-            color: #999;
-            margin-bottom: 5px;
-        }
-        .empty-tip {
-            font-size: 12px;
-            color: #999;
-            text-align: center;
-            padding: 15px 0;
-            line-height: 1.5;
+            display: block; width: 100%; padding: 10px; margin: 8px 0;
+            border: none; border-radius: 6px; background: #f8f9fa;
+            text-align: left; font-size: 14px; cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <!-- 1. 主体内容容器（上传的新HTML会显示在这里，不影响悬浮窗） -->
     <div id="latest-html-container">
-        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f5f5f5;">
-            <p style="font-size:16px; color:#666;">加载最新内容中...</p>
+        <div style="height: 100%; display: flex; align-items: center; justify-content: center;">
+            <p style="font-size: 16px; color: #666;">加载最新内容中...</p>
+        </div>
+    </div>
+    <div id="update-notice">已更新到最新文件</div>
+
+    <button class="float-btn" id="floatBtn"></button>
+    <div class="float-window" id="floatWindow">
+        <div class="window-header">
+            功能面板
+            <button class="modal-back" id="modalBack">×</button>
+        </div>
+        <div class="func-buttons">
+            <button class="func-btn" id="btnMy">我的</button>
+            <button class="func-btn" id="btnNotice">公告</button>
+            <button class="func-btn" id="btnContact">联系作者</button>
+            <button class="func-btn" id="btnSetting">设置</button>
         </div>
     </div>
 
-    <!-- 2. 更新提示（新HTML上传后自动显示） -->
-    <div id="update-notice">已更新到最新文件，正在显示...</div>
-
-    <!-- 3. 悬浮窗核心逻辑（完全保留原有可用功能，修复报错，独立运行） -->
     <script>
-        (function() {
-            // 防止悬浮窗重复注入
-            if (window.floatingWindowInjected) return;
-            window.floatingWindowInjected = true;
+        // 悬浮窗核心逻辑
+        const floatBtn = document.getElementById('floatBtn');
+        const floatWindow = document.getElementById('floatWindow');
+        const modalBack = document.getElementById('modalBack');
 
-            let styleElement = null;
-            const config = {
-                floatBtnSize: 60,
-                safeMargin: 20,
-                defaultSafeBottom: 20,
-                windowWidth: 280,
-                windowHeight: 250
-            };
-
-            // 工具函数（提前定义，避免报错）
-            const utils = {
-                formatTime: function(dateStr) {
-                    try {
-                        const date = new Date(dateStr);
-                        return [
-                            date.getFullYear(),
-                            String(date.getMonth() + 1).padStart(2, '0'),
-                            String(date.getDate()).padStart(2, '0')
-                        ].join('-') + ' ' + [
-                            String(date.getHours()).padStart(2, '0'),
-                            String(date.getMinutes()).padStart(2, '0')
-                        ].join(':');
-                    } catch (err) {
-                        return '时间格式错误';
-                    }
-                },
-                getSafeBottom: function() {
-                    const bodyStyle = getComputedStyle(document.body);
-                    const paddingBottom = parseFloat(bodyStyle.paddingBottom);
-                    return isNaN(paddingBottom) ? config.defaultSafeBottom : paddingBottom;
-                },
-                checkWindowBound: function(left, top) {
-                    const windowWidth = document.documentElement.clientWidth;
-                    const windowHeight = document.documentElement.clientHeight;
-                    const safeBottom = utils.getSafeBottom();
-                    const boundedLeft = Math.max(config.safeMargin, Math.min(left, windowWidth - config.windowWidth - config.safeMargin));
-                    const boundedTop = Math.max(config.safeMargin, Math.min(top, windowHeight - config.windowHeight - safeBottom - config.safeMargin));
-                    return { left: boundedLeft, top: boundedTop };
-                },
-                getDefaultWindowPos: function() {
-                    const windowWidth = document.documentElement.clientWidth;
-                    const windowHeight = document.documentElement.clientHeight;
-                    const left = (windowWidth - config.windowWidth) / 2;
-                    const top = (windowHeight - config.windowHeight) / 2;
-                    return utils.checkWindowBound(left, top);
-                }
-            };
-
-            // 创建悬浮窗DOM（原有结构，未修改）
-            function createFloatElements() {
-                // 悬浮球
-                const floatBtn = document.createElement('button');
-                floatBtn.className = 'float-btn';
-                floatBtn.id = 'floatBtn';
-                document.body.appendChild(floatBtn);
-
-                // 悬浮窗口
-                const floatWindow = document.createElement('div');
-                floatWindow.className = 'float-window';
-                floatWindow.id = 'floatWindow';
-                floatWindow.innerHTML = `
-                    <div class="window-header" id="windowHeader">
-                        功能面板
-                        <button class="modal-back" id="modalBack">返回</button>
-                    </div>
-                    <div class="func-buttons" id="funcButtons">
-                        <button class="func-btn" id="btnMy">
-                            <span>我的</span>
-                            <img src="https://img.icons8.com/ios-glyphs/30/666/user--v1.png" class="btn-icon" alt="我的">
-                        </button>
-                        <button class="func-btn" id="btnNotice">
-    <span>公告</span>
-    <!-- 已删除外部图标链接，仅保留文字 -->
-                        </button>
-                        <button class="func-btn" id="btnContact">
-                            <span>联系作者</span>
-                            <img src="https://img.icons8.com/ios-glyphs/30/666/contact-card--v1.png" class="btn-icon" alt="联系作者">
-                        </button>
-                        <button class="func-btn" id="btnSetting">
-                            <span>设置</span>
-                            <img src="https://img.icons8.com/ios-glyphs/30/666/settings--v1.png" class="btn-icon" alt="设置">
-                        </button>
-                    </div>
-                    <div class="content-panel" id="panelMy">
-                        <div class="user-name">用一生找寻</div>
-                        <div class="user-desc">当前功能待后续开发，暂显示用户名<br>后续可添加头像、个人信息、功能开关等内容</div>
-                    </div>
-                    <div class="content-panel" id="panelNotice">
-                        <div class="notice-item">
-                            <div class="notice-title">V1.0 功能更新公告</div>
-                            <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
-                            <div>1. 新增“我的”“公告”“联系作者”“设置”4个功能按钮；<br>2. 悬浮球支持移动端拖拽，适配屏幕安全区；<br>3. 内容面板支持“返回主页面”，隐藏弹窗靠点击悬浮球。</div>
-                        </div>
-                        <div class="notice-item">
-                            <div class="notice-title">功能预告</div>
-                            <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
-                            <div>1. “我的”模块将新增个人信息编辑功能；<br>2. “设置”模块将支持悬浮球大小、弹窗位置自定义；<br>3. 后续将优化面板样式，增加更多实用功能。</div>
-                        </div>
-                    </div>
-                    <div class="content-panel" id="panelSetting">
-                        <div class="empty-tip">设置功能待开发<br>敬请期待后续更新～</div>
-                    </div>
-                `;
-                document.body.appendChild(floatWindow);
-
-                return { floatBtn, floatWindow };
-            }
-
-            // 悬浮窗交互逻辑（原有功能，未修改）
-            function initFloatFunctions(elements) {
-                const { floatBtn, floatWindow } = elements;
-                const modalBack = document.getElementById('modalBack');
-                const windowHeader = document.getElementById('windowHeader');
-                const funcButtons = document.getElementById('funcButtons');
-                const btnMy = document.getElementById('btnMy');
-                const btnNotice = document.getElementById('btnNotice');
-                const btnContact = document.getElementById('btnContact');
-                const btnSetting = document.getElementById('btnSetting');
-                const panelMy = document.getElementById('panelMy');
-                const panelNotice = document.getElementById('panelNotice');
-                const panelSetting = document.getElementById('panelSetting');
-
-                // 状态变量
-                let btnIsDragging = false;
-                let btnDragStart = 0;
-                let btnStartX = 0;
-                let btnStartY = 0;
-                let btnOffsetX = 0;
-                let btnOffsetY = 0;
-                let winIsDragging = false;
-                let winDragStart = 0;
-                let winStartX = 0;
-                let winStartY = 0;
-                let winOffsetX = 0;
-                let winOffsetY = 0;
-                let isInMainPanel = true; 
-                let lastActivePanel = null;
-                let currentWindowPos = utils.getDefaultWindowPos();
-
-                // 悬浮球初始位置（右下角）
-                function initBtnPosition() {
-                    const windowWidth = document.documentElement.clientWidth;
-                    const windowHeight = document.documentElement.clientHeight;
-                    const safeBottom = utils.getSafeBottom();
-                    const btnSize = config.floatBtnSize;
-                    floatBtn.style.left = `${windowWidth - btnSize - config.safeMargin}px`;
-                    floatBtn.style.top = `${windowHeight - btnSize - safeBottom - config.safeMargin}px`;
-                    floatBtn.style.bottom = 'auto';
-                    floatBtn.style.right = 'auto';
-                }
-
-                // 弹窗定位
-                function positionWindow() {
-                    const boundedPos = utils.checkWindowBound(currentWindowPos.left, currentWindowPos.top);
-                    currentWindowPos = boundedPos;
-                    floatWindow.style.left = `${boundedPos.left}px`;
-                    floatWindow.style.top = `${boundedPos.top}px`;
-                }
-
-                // 面板切换
-                function switchContentPanel(targetPanelId) {
-                    funcButtons.style.display = 'none';
-                    panelMy.classList.remove('active');
-                    panelNotice.classList.remove('active');
-                    panelSetting.classList.remove('active');
-                    document.getElementById(targetPanelId).classList.add('active');
-                    modalBack.style.display = 'block';
-                    isInMainPanel = false;
-                }
-
-                // 返回主面板
-                function backToMainPanel() {
-                    funcButtons.style.display = 'flex';
-                    panelMy.classList.remove('active');
-                    panelNotice.classList.remove('active');
-                    panelSetting.classList.remove('active');
-                    modalBack.style.display = 'none';
-                    isInMainPanel = true;
-                }
-
-                // 悬浮球点击（显示/隐藏弹窗）
-                floatBtn.addEventListener('click', () => {
-                    if (!btnIsDragging) {
-                        floatWindow.classList.toggle('active');
-                        if (floatWindow.classList.contains('active')) positionWindow();
-                    }
-                });
-
-                // 返回按钮点击
-                modalBack.addEventListener('click', backToMainPanel);
-
-                // 功能按钮点击
-                btnMy.addEventListener('click', () => switchContentPanel('panelMy'));
-                btnNotice.addEventListener('click', () => switchContentPanel('panelNotice'));
-                btnContact.addEventListener('click', () => window.open('https://qzone.qq.com/2673976185', '_blank'));
-                btnSetting.addEventListener('click', () => switchContentPanel('panelSetting'));
-
-                // 移动端拖拽（原有逻辑，正常使用）
-                floatBtn.addEventListener('touchstart', (e) => {
-                    btnDragStart = Date.now();
-                    const touch = e.touches[0];
-                    btnStartX = touch.clientX;
-                    btnStartY = touch.clientY;
-                    const btnRect = floatBtn.getBoundingClientRect();
-                    btnOffsetX = btnRect.left;
-                    btnOffsetY = btnRect.top;
-                    btnIsDragging = false;
-                }, { passive: true });
-
-                floatBtn.addEventListener('touchmove', (e) => {
-                    const touch = e.touches[0];
-                    const moveX = Math.abs(touch.clientX - btnStartX);
-                    const moveY = Math.abs(touch.clientY - btnStartY);
-                    if (moveX > 5 || moveY > 5 || Date.now() - btnDragStart > 150) {
-                        btnIsDragging = true;
-                        const newLeft = btnOffsetX + (touch.clientX - btnStartX);
-                        const newTop = btnOffsetY + (touch.clientY - btnStartY);
-                        const windowWidth = document.documentElement.clientWidth;
-                        const windowHeight = document.documentElement.clientHeight;
-                        const btnSize = config.floatBtnSize;
-                        const safeBottom = utils.getSafeBottom();
-                        const boundedLeft = Math.max(config.safeMargin, Math.min(newLeft, windowWidth - btnSize - config.safeMargin));
-                        const boundedTop = Math.max(config.safeMargin, Math.min(newTop, windowHeight - btnSize - safeBottom - config.safeMargin));
-                        floatBtn.style.left = `${boundedLeft}px`;
-                        floatBtn.style.top = `${boundedTop}px`;
-                    }
-                }, { passive: false });
-
-                windowHeader.addEventListener('touchstart', (e) => {
-                    if (!floatWindow.classList.contains('active')) return;
-                    winDragStart = Date.now();
-                    const touch = e.touches[0];
-                    winStartX = touch.clientX;
-                    winStartY = touch.clientY;
-                    const winRect = floatWindow.getBoundingClientRect();
-                    winOffsetX = winRect.left;
-                    winOffsetY = winRect.top;
-                    winIsDragging = false;
-                }, { passive: true });
-
-                windowHeader.addEventListener('touchmove', (e) => {
-                    if (!floatWindow.classList.contains('active')) return;
-                    const touch = e.touches[0];
-                    const moveX = Math.abs(touch.clientX - winStartX);
-                    const moveY = Math.abs(touch.clientY - winStartY);
-                    if (moveX > 5 || moveY > 5 || Date.now() - winDragStart > 150) {
-                        winIsDragging = true;
-                        const newLeft = winOffsetX + (touch.clientX - winStartX);
-                        const newTop = winOffsetY + (touch.clientY - winStartY);
-                        const boundedPos = utils.checkWindowBound(newLeft, newTop);
-                        currentWindowPos = boundedPos;
-                        floatWindow.style.left = `${boundedPos.left}px`;
-                        floatWindow.style.top = `${boundedPos.top}px`;
-                    }
-                }, { passive: false });
-
-                // 窗口缩放定位
-                window.addEventListener('load', initBtnPosition);
-                window.addEventListener('resize', () => {
-                    initBtnPosition();
-                    if (floatWindow.classList.contains('active')) positionWindow();
-                });
-
-                // 初始化
-                backToMainPanel();
-            }
-
-            // 初始化悬浮窗（页面加载自动运行）
-            function initFloatingWindow() {
-                try {
-                    const elements = createFloatElements();
-                    initFloatFunctions(elements);
-                    console.log('悬浮窗初始化完成（原有功能正常）');
-                } catch (err) {
-                    console.error('悬浮窗加载报错：', err);
-                }
-            }
-
-            // 启动悬浮窗
-            window.addEventListener('load', initFloatingWindow);
-        })();
-    </script>
-
-    <!-- 4. HTML自动更新逻辑（适配你的Render服务，无需修改） -->
-    <script>
-        const STORAGE_KEY = 'latest_uploaded_html';
-        const container = document.getElementById('latest-html-container');
-        const updateNotice = document.getElementById('update-notice');
-        // 你的Render服务域名（已确认正确，无需修改）
-        const RENDER_DOMAIN = 'https://auto-update-z5j4.onrender.com';
-        const WS_URL = `wss://${RENDER_DOMAIN}`;
-        const GET_LATEST_URL = `https://${RENDER_DOMAIN}/get-latest-html`;
-
-        // 优先加载本地缓存的HTML
-        function initLatestHtml() {
-            const localHtml = localStorage.getItem(STORAGE_KEY);
-            localHtml ? renderHtml(localHtml) : fetchLatestHtmlFromServer();
-        }
-
-        // 从服务器拉取最新HTML
-        function fetchLatestHtmlFromServer() {
-            fetch(GET_LATEST_URL)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.content) {
-                        renderHtml(data.content);
-                        localStorage.setItem(STORAGE_KEY, data.content);
-                    }
-                })
-                .catch(err => {
-                    const localCache = localStorage.getItem(STORAGE_KEY);
-                    if (localCache) {
-                        renderHtml(localCache);
-                    } else {
-                        container.innerHTML = `
-                            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f5f5f5; color:#ff4444;">
-                                <p>连接服务器失败，请检查网络</p>
-                            </div>
-                        `;
-                    }
-                });
-        }
-
-        // 渲染HTML并执行脚本
-        function renderHtml(htmlContent) {
-            container.innerHTML = htmlContent;
-            const scripts = container.querySelectorAll('script');
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement('script');
-                newScript.src = oldScript.src;
-                newScript.textContent = oldScript.textContent;
-                oldScript.parentNode.replaceChild(newScript, oldScript);
-            });
-        }
-
-        // WebSocket监听更新（上传新HTML自动触发）
-        function initWebSocket() {
-            const ws = new WebSocket(WS_URL);
-            ws.onopen = () => console.log('自动更新连接成功，等待新文件上传');
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'new_html' || data.type === 'init_latest') {
-                    updateNotice.style.display = 'block';
-                    localStorage.setItem(STORAGE_KEY, data.content);
-                    renderHtml(data.content);
-                    setTimeout(() => updateNotice.style.display = 'none', 3000);
-                }
-            };
-            ws.onclose = () => setTimeout(initWebSocket, 5000); // 断开自动重连
-        }
-
-        // 启动自动更新逻辑
-        window.addEventListener('load', () => {
-            initLatestHtml();
-            initWebSocket();
+        // 显示/隐藏悬浮窗
+        floatBtn.addEventListener('click', () => {
+            floatWindow.classList.toggle('active');
         });
+
+        // 关闭悬浮窗
+        modalBack.addEventListener('click', () => {
+            floatWindow.classList.remove('active');
+        });
+
+        // 自动更新逻辑
+        const container = document.getElementById('latest-html-container');
+        const notice = document.getElementById('update-notice');
+        const RENDER_DOMAIN = 'https://auto-update-z5j4.onrender.com';
+
+        // 加载HTML内容
+        function loadHtml(content) {
+            container.innerHTML = content;
+            notice.style.display = 'block';
+            setTimeout(() => notice.style.display = 'none', 3000);
+        }
+
+        // WebSocket监听更新
+        let ws = new WebSocket(`wss://${RENDER_DOMAIN}/github-webhook`);
+        ws.onmessage = (e) => loadHtml(e.data);
+        ws.onclose = () => setTimeout(() => ws = new WebSocket(`wss://${RENDER_DOMAIN}/github-webhook`), 5000);
     </script>
 </body>
 </html>
