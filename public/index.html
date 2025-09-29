@@ -501,9 +501,9 @@
         const container = document.getElementById('latest-html-container');
         const updateNotice = document.getElementById('update-notice');
         // 你的Render服务域名（已确认正确，无需修改）
-        const RENDER_DOMAIN = 'https://auto-update-z5j4.onrender.com';
-        const WS_URL = `wss://${RENDER_DOMAIN}`;
-        const GET_LATEST_URL = `https://${RENDER_DOMAIN}/get-latest-html`;
+        const RENDER_DOMAIN = 'auto-update-z5j4.onrender.com'; // 仅保留域名，无协议
+const WS_URL = `wss://${RENDER_DOMAIN}`; // 正确拼接：wss://auto-update-z5j4.onrender.com
+const GET_LATEST_URL = `https://${RENDER_DOMAIN}/get-latest-html`; // 接口路径也同步修正
 
         // 优先加载本地缓存的HTML
         function initLatestHtml() {
