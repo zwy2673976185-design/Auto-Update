@@ -7,7 +7,7 @@ const app = express();
 const config = {
   github: {
     secret: 'my-auto-update-secret-2025', // 需与GitHub Webhook的Secret一致
-    token: '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', // 你的GitHub个人访问令牌
+    token: process.env.GITHUB_TOKEN, // 从环境变量读取令牌
     owner: 'zwy2673976185-design', // 你的GitHub用户名
     repo: 'Auto-Update' // 你的仓库名
   },
