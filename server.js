@@ -1,50 +1,46 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const fs = require('fs');
-const path = require('path');
 const fetch = require('node-fetch');
+const path = require('path');
 
+// 1. 初始化Express和Socket.io
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-  cors: { origin: "*" }
+  cors: { origin: "*" } // 允许所有主页面跨域连接（仅测试用，正式可限制为你的GitHub Pages域名）
 });
 
-// 替换为nrgx仓库中index.html的Raw地址
-const GITHUB_HTML_URL = "https://raw.githubusercontent.com/zwy2673976185-design/nrgx/main/index.html";
-const SERVER_SAVED_HTML_PATH = path.join(__dirname, "saved-latest-nrgx.html");
+// 2. 配置：你的外部HTML的GitHub Raw地址（已替换为nrgx仓库）
+const EXTERNAL_HTML_URL = "https://raw.githubusercontent.com/zwy2673976185-design/nrgx/main/external-content.html";
 
-async function initLatestHtml() {
+// 3. 暴露接口：供主页面拉取最新外部HTML
+app.get('/get-latest-external-html', async (req, res) => {
   try {
-    const response = await fetch(GITHUB_HTML_URL);
-    const latestHtml = await response.text();
-    fs.writeFileSync(SERVER_SAVED_HTML_PATH, latestHtml);
-    console.log("已存储nrgx仓库最新HTML，旧版本已覆盖");
+    const response = await fetch(EXTERNAL_HTML_URL);
+    if (!response.ok) throw new Error(`获取外部HTML失败：${response.status}`);
+    const htmlContent = await response.text();
+    res.send(htmlContent); // 返回最新外部HTML内容
   } catch (err) {
-    console.error("拉取nrgx HTML失败：", err);
-  }
-}
-initLatestHtml();
-
-app.get('/get-latest-nrgx-html', (req, res) => {
-  if (fs.existsSync(SERVER_SAVED_HTML_PATH)) {
-    const htmlContent = fs.readFileSync(SERVER_SAVED_HTML_PATH, 'utf8');
-    res.send(htmlContent);
-  } else {
-    res.send("暂无nrgx最新内容");
+    res.status(500).send(`加载失败：${err.message}`);
   }
 });
 
+// 4. Socket.io：服务器部署完成后，通知所有连接的主页面“更新内容”
 io.on('connection', (socket) => {
-  console.log("有用户连接nrgx测试服务");
-  socket.emit('nrgx-html-updated', { msg: "检测到nrgx最新HTML，正在同步..." });
+  console.log('有页面连接到服务器');
+  
+  // 服务器启动/部署完成后，主动推送更新通知
+  socket.emit('external-html-updated', { msg: "检测到最新外部HTML，正在同步..." });
+  
   socket.on('disconnect', () => {
-    console.log("用户断开nrgx测试服务连接");
+    console.log('页面断开连接');
   });
 });
 
+// 5. 启动服务器
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`nrgx测试服务器已启动，运行在端口${PORT}`);
+  console.log(`服务器已启动，端口：${PORT}`);
+  console.log(`外部HTML拉取地址：${EXTERNAL_HTML_URL}`);
 });
