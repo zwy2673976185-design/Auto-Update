@@ -1,122 +1,102 @@
-const http = require('http');
+const express = require('express');
 const WebSocket = require('ws');
-const fetch = require('node-fetch');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto'); // 用于验证GitHub Webhook（可选，提升安全）
+const crypto = require('crypto');
+const axios = require('axios');
+const app = express();
 
-// 配置1：核心3项（仅服务器配置）
-const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/zwy2673976185-design/yyszx/main/test-content.html'; // GitHub测试文件Raw地址
-const PORT = 3000; // Render服务器端口（需公开）
-const GITHUB_WEBHOOK_SECRET = 'your-custom-secret'; // 自定义密钥（后面GitHub配置要填一样的，可选，不填则注释验证逻辑）
-
-// 配置2：要监听的GitHub分支（只在main分支上传文件才触发，可改）
-const TARGET_BRANCH = 'main';
-
-// 核心：只存1个最新文件内容（更新时覆盖）
-let latestFileContent = '';
-
-// 1. 初始化：首次启动拉1次最新文件（之后只靠上传触发更新）
-async function initGitHubFile() {
-  try {
-    const res = await fetch(GITHUB_RAW_URL);
-    latestFileContent = await res.text();
-    console.log('初始化完成：服务器保存最新文件（仅1个）');
-  } catch (err) {
-    console.error('初始化拉取失败：', err);
-    latestFileContent = '<h3>文件加载中，稍等重试</h3>';
+// 必须改：5处配置，全部换成你的信息
+const config = {
+  github: {
+    secret: '你的GitHub-Webhook密钥', // 1. 自己设一个（比如：my-github-secret-123），后面GitHub要用
+    token: '你的GitHub令牌', // 2. 生成的PAT（公开库只要勾“public_repo”权限）
+    owner: '你的GitHub用户名', // 3. 比如：zwy2673976185-design
+    repo: '你的GitHub仓库名' // 4. 比如：yyszx
+  },
+  render: {
+    domain: '你的Render服务域名' // 5. 部署后从Render复制（和步骤1的域名一致）
   }
-}
-initGitHubFile();
+};
 
-// 2. 核心：处理GitHub Webhook（仅上传文件到目标分支时触发）
-function handleGitHubWebhook(req, res) {
-  let body = '';
-  // 接收GitHub发送的通知数据
-  req.on('data', chunk => body += chunk.toString());
+// 只存最新1个HTML，新上传的覆盖旧的，不用改
+let latestHtmlCache = ''; 
+let latestHtmlPath = '';  
 
-  req.on('end', async () => {
-    // 可选：验证是否是GitHub发来的通知（避免恶意请求，需和GitHub配置的secret一致）
-    const signature = req.headers['x-hub-signature-256'];
-    const hmac = crypto.createHmac('sha256', GITHUB_WEBHOOK_SECRET);
-    const digest = `sha256=${hmac.update(body).digest('hex')}`;
-    if (signature !== digest) {
-      res.writeHead(403);
-      res.end('Webhook验证失败（密钥不匹配）');
-      return;
-    }
+// 固定配置，不用改
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public')); // 读public文件夹里的index.html，前端页面从这来
 
-    // 解析GitHub通知：确认是“上传文件（push）”且在目标分支
-    const payload = JSON.parse(body);
-    if (payload.ref === `refs/heads/${TARGET_BRANCH}` && payload.commits) {
-      console.log('检测到：上传文件到目标分支，开始更新');
-      // 拉取GitHub最新文件，覆盖服务器存储
-      const res = await fetch(GITHUB_RAW_URL);
-      const newContent = await res.text();
-      latestFileContent = newContent; // 只存最新1个
-
-      // 推更新通知给所有前端
-      wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send('need_update'); // 给前端发“更新信号”
-        }
-      });
-      res.writeHead(200);
-      res.end('已接收上传通知，服务器更新并推送前端');
-    } else {
-      // 不是目标分支的上传，忽略
-      res.writeHead(200);
-      res.end('非目标分支上传，忽略');
-    }
-  });
-}
-
-// 3. HTTP服务器：托管前端 + 接收GitHub Webhook + 提供最新内容接口
-const server = http.createServer((req, res) => {
-  // 接口1：GitHub Webhook专用（接收上传通知，路径固定为/webhook）
-  if (req.url === '/webhook' && req.method === 'POST') {
-    handleGitHubWebhook(req, res);
-    return;
-  }
-
-  // 接口2：前端请求最新内容（只返回服务器存储的最新1个）
-  if (req.url === '/get-latest-content' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(latestFileContent);
-    return;
-  }
-
-  // 接口3：根路径，返回前端悬浮窗页面
-  if (req.url === '/' && req.method === 'GET') {
-    const frontPath = path.join(__dirname, 'float-main.html');
-    fs.readFile(frontPath, (err, data) => {
-      if (err) { res.writeHead(404); res.end('前端页面未找到'); return; }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(data);
-    });
-    return;
-  }
-
-  res.writeHead(404);
-  res.end('页面/接口不存在');
-});
-
-// 4. WebSocket服务器：给前端推初始化内容 + 上传触发的更新通知
-const wss = new WebSocket.Server({ server });
+// WebSocket服务（给前端推更新，Render上必须这么写，不用改）
+const wss = new WebSocket.Server({ noServer: true });
+const wsClients = new Set();
 wss.on('connection', (ws) => {
-  console.log('前端连接服务器');
-  // 前端刚连接：推最新内容（同时前端存本地，刷新不丢）
-  ws.send(JSON.stringify({
-    type: 'init_content',
-    content: latestFileContent
-  }));
-
-  ws.on('close', () => console.log('前端断开连接'));
+  wsClients.add(ws);
+  // 前端刚打开时，若有最新HTML，直接推过去
+  if (latestHtmlCache) {
+    ws.send(JSON.stringify({ type: 'init_latest', content: latestHtmlCache }));
+  }
+  ws.on('close', () => wsClients.delete(ws));
 });
 
-// 启动服务器
-server.listen(PORT, () => {
-  console.log(`服务器启动！`);
-  console.log(`1. 前端访问：https://你的Render服务URL`);
-  console.log(`2. GitHub Webhook地址：https://你的Render服务URL/webhook`);
+// 核心：接收GitHub的“上传通知”（Webhook回调）
+app.post('/github-webhook', (req, res) => {
+  // 1. 验证GitHub的通知是不是真的（避免伪造请求，不用改）
+  const githubSignature = req.headers['x-hub-signature-256'];
+  const hmac = crypto.createHmac('sha256', config.github.secret);
+  const localDigest = `sha256=${hmac.update(JSON.stringify(req.body)).digest('hex')}`;
+  if (githubSignature !== localDigest) {
+    return res.status(403).send('签名错，非法请求');
+  }
+
+  // 2. 只处理HTML文件（上传其他文件不触发更新，不用改）
+  const addedFiles = req.body?.head_commit?.added || [];
+  const targetHtmlFile = addedFiles.find(file => file.endsWith('.html'));
+  if (!targetHtmlFile) {
+    return res.status(200).send('不是HTML文件，跳过');
+  }
+
+  // 3. 从GitHub拉取最新上传的HTML（base64解码，不用改）
+  axios.get(`https://api.github.com/repos/${config.github.owner}/${config.github.repo}/contents/${targetHtmlFile}`, {
+    headers: {
+      'Accept': 'application/vnd.github.v3+json',
+      'Authorization': `token ${config.github.token}` // 用GitHub令牌拉文件
+    }
+  }).then(githubRes => {
+    const htmlContent = Buffer.from(githubRes.data.content, 'base64').toString('utf8');
+    
+    // 4. 缓存最新HTML（覆盖旧的），并推给所有在线前端
+    latestHtmlCache = htmlContent;
+    latestHtmlPath = targetHtmlFile;
+    wsClients.forEach(ws => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'new_html', content: htmlContent, fileName: targetHtmlFile }));
+      }
+    });
+
+    res.status(200).send('更新通知已推给前端');
+  }).catch(err => {
+    console.error('拉GitHub文件失败：', err);
+    res.status(500).send('拉文件失败，检查GitHub令牌/仓库名');
+  });
+});
+
+// 兜底接口：前端本地没缓存时，从这拉最新HTML（不用改）
+app.get('/get-latest-html', (req, res) => {
+  res.send({
+    content: latestHtmlCache,
+    fileName: latestHtmlPath,
+    updateTime: new Date().toLocaleString()
+  });
+});
+
+// 启动服务器（Render上固定端口3000，不用改）
+const server = app.listen(3000, () => {
+  console.log(`前端页面地址：https://${config.render.domain}`);
+});
+
+// 处理WebSocket的请求（Render专用，不用改）
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
+  });
 });
