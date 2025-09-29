@@ -506,10 +506,20 @@ const WS_URL = `wss://${RENDER_DOMAIN}`; // 正确拼接：wss://auto-update-z5j
 const GET_LATEST_URL = `https://${RENDER_DOMAIN}/get-latest-html`; // 接口路径也同步修正
 
         // 优先加载本地缓存的HTML
-        function initLatestHtml() {
-            const localHtml = localStorage.getItem(STORAGE_KEY);
-            localHtml ? renderHtml(localHtml) : fetchLatestHtmlFromServer();
-        }
+        function renderHtml(htmlContent) {
+    container.innerHTML = htmlContent;
+    // 执行所有脚本（包括内联和外部）
+    const scripts = container.querySelectorAll('script');
+    scripts.forEach(script => {
+        const newScript = document.createElement('script');
+        // 复制所有属性（如src、type）
+        Array.from(script.attributes).forEach(attr => {
+            newScript.setAttribute(attr.name, attr.value);
+        });
+        newScript.textContent = script.textContent;
+        script.parentNode.replaceChild(newScript, script);
+    });
+}
 
         // 从服务器拉取最新HTML
         function fetchLatestHtmlFromServer() {
