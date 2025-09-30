@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试弹窗交互（完美版）</title>
+    <style>
+        /* 弹窗样式：居中显示、阴影突出、圆角美观 */
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 24px 32px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            display: none;
+            z-index: 999;
+            max-width: 80%;
+            text-align: center;
+        }
+        /* 按钮样式： hover/点击反馈明显 */
+        .test-btn {
+            margin: 40px auto;
+            display: block;
+            padding: 12px 24px;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s ease;
+        }
+        .test-btn:hover {
+            background: #1d4ed8;
+        }
+        .test-btn:active {
+            transform: scale(0.95);
+        }
+        /* 弹窗文本样式：清晰易读 */
+        .popup-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 16px;
+        }
+        /* 遮罩层：增强弹窗层次感 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 998;
+        }
+    </style>
+</head>
+<body>
+    <!-- 触发按钮 -->
+    <button id="showPopup" class="test-btn">点击显示弹窗（3秒后自动消失）</button>
+
+    <!-- 遮罩层 -->
+    <div id="overlay" class="overlay"></div>
+
+    <!-- 弹窗主体 -->
+    <div id="popup" class="popup">
+        <div class="popup-content">
+            测试弹窗内容<br>
+            这是一个自动消失的弹窗，用于验证交互和自动更新功能。
+        </div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const showPopupBtn = document.getElementById('showPopup');
+        const popup = document.getElementById('popup');
+        const overlay = document.getElementById('overlay');
+
+        // 绑定点击事件
+        showPopupBtn.addEventListener('click', () => {
+            popup.style.display = 'block';
+            overlay.style.display = 'block';
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                popup.style.display = 'none';
+                overlay.style.display = 'none';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
