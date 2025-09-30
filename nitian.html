@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>测试交互（显示+点击必生效）</title>
+    <style>
+        .test-btn {
+            margin: 50px auto;
+            display: block;
+            padding: 10px 20px;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <button class="test-btn" id="showPopup">点击显示弹窗</button>
+    <div class="popup" id="popup">这是测试弹窗，交互正常！</div>
+
+    <script>
+        const btn = document.getElementById('showPopup');
+        const popup = document.getElementById('popup');
+        btn.addEventListener('click', () => {
+            popup.style.display = 'block';
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
