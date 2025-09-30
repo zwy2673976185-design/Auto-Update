@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>悬浮窗+HTML自动更新（最终测试版）</title>
+    <title>悬浮窗+HTML自动更新（无提示版）</title>
     <style>
         /* 1. 主体内容样式（用于显示上传的HTML，层级低于悬浮窗） */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
@@ -22,18 +22,6 @@
             position: absolute;
             top: 0;
             left: 0;
-        }
-        #update-notice {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 10px 20px;
-            background: #2563eb;
-            color: #fff;
-            border-radius: 6px;
-            z-index: 99;
-            display: none;
         }
 
         /* 2. 悬浮窗样式（完全保留原有可用样式） */
@@ -202,9 +190,6 @@
         </div>
     </div>
 
-    <!-- 2. 更新提示（新HTML上传后自动显示） -->
-    <div id="update-notice">已更新到最新文件，正在显示...</div>
-
     <!-- 3. 悬浮窗核心逻辑（独立运行，功能正常） -->
     <script>
         (function() {
@@ -296,12 +281,7 @@
                         <div class="notice-item">
                             <div class="notice-title">V1.0 功能更新公告</div>
                             <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
-                            <div>1. 新增“我的”“公告”“联系作者”“设置”4个功能按钮；<br>2. 悬浮球支持移动端拖拽，适配屏幕安全区；<br>3. 内容面板支持“返回主页面”，隐藏弹窗靠点击悬浮球。</div>
-                        </div>
-                        <div class="notice-item">
-                            <div class="notice-title">功能预告</div>
-                            <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
-                            <div>1. “我的”模块将新增个人信息编辑功能；<br>2. “设置”模块将支持悬浮球大小、弹窗位置自定义；<br>3. 后续将优化面板样式，增加更多实用功能。</div>
+                            <div>1. 支持任意HTML文件自动加载与执行；<br>2. 上传新文件后页面无任何提示，静默更新；<br>3. 悬浮球/窗口可拖拽，功能完全保留。</div>
                         </div>
                     </div>
                     <div class="content-panel" id="panelSetting">
@@ -473,11 +453,10 @@
         })();
     </script>
 
-    <!-- 4. HTML自动更新逻辑（修复函数重复，确保脚本执行） -->
+    <!-- 4. HTML自动更新逻辑（无提示，静默加载） -->
     <script>
         const STORAGE_KEY = 'latest_uploaded_html';
         const container = document.getElementById('latest-html-container');
-        const updateNotice = document.getElementById('update-notice');
         const RENDER_DOMAIN = 'auto-update-z5j4.onrender.com'; 
         const WS_URL = `wss://${RENDER_DOMAIN}`;
         const GET_LATEST_URL = `https://${RENDER_DOMAIN}/get-latest-html`;
@@ -524,10 +503,8 @@
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'new_html' || data.type === 'init_latest') {
-                    updateNotice.style.display = 'block';
-                    localStorage.setItem(STORAGE_KEY, data.content);
                     renderHtml(data.content);
-                    setTimeout(() => updateNotice.style.display = 'none', 3000);
+                    localStorage.setItem(STORAGE_KEY, data.content);
                 }
             };
             ws.onclose = () => setTimeout(initWebSocket, 5000);
