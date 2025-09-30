@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>悬浮窗+任意HTML自动更新（无提示版）</title>
+    <title>悬浮窗+HTML自动更新（最终测试版）</title>
     <style>
-        /* 主体内容样式 */
+        /* 1. 主体内容样式（用于显示上传的HTML，层级低于悬浮窗） */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
         body { 
             height: 100vh; 
@@ -23,8 +23,20 @@
             top: 0;
             left: 0;
         }
+        #update-notice {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background: #2563eb;
+            color: #fff;
+            border-radius: 6px;
+            z-index: 99;
+            display: none;
+        }
 
-        /* 悬浮窗样式（保留原有功能） */
+        /* 2. 悬浮窗样式（完全保留原有可用样式） */
         .float-btn {
             position: fixed;
             z-index: 1002;
@@ -183,12 +195,17 @@
     </style>
 </head>
 <body>
-    <!-- 主体内容容器 -->
+    <!-- 1. 主体内容容器（上传的新HTML会显示在这里） -->
     <div id="latest-html-container">
-        <div style="width:100%; height:100%; background:#f5f5f5;"></div>
+        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f5f5f5;">
+            <p style="font-size:16px; color:#666;">加载最新内容中...</p>
+        </div>
     </div>
 
-    <!-- 悬浮窗逻辑（保留原有功能） -->
+    <!-- 2. 更新提示（新HTML上传后自动显示） -->
+    <div id="update-notice">已更新到最新文件，正在显示...</div>
+
+    <!-- 3. 悬浮窗核心逻辑（独立运行，功能正常） -->
     <script>
         (function() {
             if (window.floatingWindowInjected) return;
@@ -279,7 +296,12 @@
                         <div class="notice-item">
                             <div class="notice-title">V1.0 功能更新公告</div>
                             <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
-                            <div>1. 支持任意HTML文件加载与执行；<br>2. 自动修复资源路径，确保图片、脚本正常加载；<br>3. 无更新提示，界面更简洁。</div>
+                            <div>1. 新增“我的”“公告”“联系作者”“设置”4个功能按钮；<br>2. 悬浮球支持移动端拖拽，适配屏幕安全区；<br>3. 内容面板支持“返回主页面”，隐藏弹窗靠点击悬浮球。</div>
+                        </div>
+                        <div class="notice-item">
+                            <div class="notice-title">功能预告</div>
+                            <div class="notice-time">${utils.formatTime(new Date().toISOString())}</div>
+                            <div>1. “我的”模块将新增个人信息编辑功能；<br>2. “设置”模块将支持悬浮球大小、弹窗位置自定义；<br>3. 后续将优化面板样式，增加更多实用功能。</div>
                         </div>
                     </div>
                     <div class="content-panel" id="panelSetting">
@@ -451,106 +473,68 @@
         })();
     </script>
 
-    <!-- 任意HTML文件加载逻辑（无提示版） -->
+    <!-- 4. HTML自动更新逻辑（修复函数重复，确保脚本执行） -->
     <script>
+        const STORAGE_KEY = 'latest_uploaded_html';
         const container = document.getElementById('latest-html-container');
-        // GitHub仓库信息（替换为你的仓库）
-        const GITHUB_REPO = 'zwy2673976185-design/Auto-Update'; 
-        const GITHUB_TOKEN = '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'; // 你的GitHub令牌
-        const RENDER_DOMAIN = 'auto-update-z5j4.onrender.com';
+        const updateNotice = document.getElementById('update-notice');
+        const RENDER_DOMAIN = 'auto-update-z5j4.onrender.com'; 
         const WS_URL = `wss://${RENDER_DOMAIN}`;
+        const GET_LATEST_URL = `https://${RENDER_DOMAIN}/get-latest-html`;
 
-        // 修复资源路径（将相对路径转为GitHub绝对路径）
-        function fixResourcePaths(htmlContent) {
-            // 修复图片路径
-            htmlContent = htmlContent.replace(/src="([^"]+)"/g, (match, src) => {
-                if (src.startsWith('http://') || src.startsWith('https://')) return match;
-                return `src="https://raw.githubusercontent.com/${GITHUB_REPO}/main/${src}"`;
-            });
-            // 修复样式路径
-            htmlContent = htmlContent.replace(/href="([^"]+)"/g, (match, href) => {
-                if (href.startsWith('http://') || href.startsWith('https://')) return match;
-                return `href="https://raw.githubusercontent.com/${GITHUB_REPO}/main/${href}"`;
-            });
-            // 修复脚本路径
-            htmlContent = htmlContent.replace(/src="([^"]+)"/g, (match, src) => {
-                if (src.startsWith('http://') || src.startsWith('https://')) return match;
-                return `src="https://raw.githubusercontent.com/${GITHUB_REPO}/main/${src}"`;
-            });
-            return htmlContent;
-        }
-
-        // 渲染HTML并执行所有脚本
         function renderHtml(htmlContent) {
-            try {
-                htmlContent = fixResourcePaths(htmlContent);
-                container.innerHTML = htmlContent;
-                // 执行所有脚本（包括内联和外部）
-                const scripts = container.querySelectorAll('script');
-                scripts.forEach(script => {
-                    const newScript = document.createElement('script');
-                    // 复制所有属性（如src、type、defer、async）
-                    Array.from(script.attributes).forEach(attr => {
-                        newScript.setAttribute(attr.name, attr.value);
-                    });
-                    newScript.textContent = script.textContent;
-                    script.parentNode.replaceChild(newScript, script);
+            container.innerHTML = htmlContent;
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(script => {
+                const newScript = document.createElement('script');
+                Array.from(script.attributes).forEach(attr => {
+                    newScript.setAttribute(attr.name, attr.value);
                 });
-            } catch (err) {
-                console.error('HTML渲染失败：', err);
-            }
+                newScript.textContent = script.textContent;
+                script.parentNode.replaceChild(newScript, script);
+            });
         }
 
-        // 获取GitHub仓库中最新的HTML文件
-        function fetchLatestHtmlFromGitHub() {
-            fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents`, {
-                headers: {
-                    Authorization: `token ${GITHUB_TOKEN}`,
-                    Accept: 'application/vnd.github.v3+json'
-                }
-            })
-            .then(res => res.json())
-            .then(files => {
-                // 筛选出所有HTML文件
-                const htmlFiles = files.filter(file => file.name.endsWith('.html'));
-                if (htmlFiles.length === 0) {
-                    return;
-                }
-                // 加载最新的HTML文件（按更新时间排序）
-                htmlFiles.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-                const latestHtmlFile = htmlFiles[0];
-                fetch(latestHtmlFile.download_url)
-                    .then(res => res.text())
-                    .then(htmlContent => {
-                        renderHtml(htmlContent);
-                        localStorage.setItem('latest_html_content', htmlContent);
-                    })
-                    .catch(err => console.error(err));
-            })
-            .catch(err => console.error(err));
+        function fetchLatestHtmlFromServer() {
+            fetch(GET_LATEST_URL)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.content) {
+                        renderHtml(data.content);
+                        localStorage.setItem(STORAGE_KEY, data.content);
+                    }
+                })
+                .catch(err => {
+                    const localCache = localStorage.getItem(STORAGE_KEY);
+                    if (localCache) {
+                        renderHtml(localCache);
+                    } else {
+                        container.innerHTML = `
+                            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f5f5f5; color:#ff4444;">
+                                <p>连接服务器失败，请检查网络</p>
+                            </div>
+                        `;
+                    }
+                });
         }
 
-        // WebSocket监听更新
         function initWebSocket() {
             const ws = new WebSocket(WS_URL);
             ws.onopen = () => console.log('自动更新连接成功，等待新文件上传');
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                if (data.type === 'new_html') {
-                    fetchLatestHtmlFromGitHub();
+                if (data.type === 'new_html' || data.type === 'init_latest') {
+                    updateNotice.style.display = 'block';
+                    localStorage.setItem(STORAGE_KEY, data.content);
+                    renderHtml(data.content);
+                    setTimeout(() => updateNotice.style.display = 'none', 3000);
                 }
             };
             ws.onclose = () => setTimeout(initWebSocket, 5000);
         }
 
-        // 初始化
         window.addEventListener('load', () => {
-            const cachedHtml = localStorage.getItem('latest_html_content');
-            if (cachedHtml) {
-                renderHtml(cachedHtml);
-            } else {
-                fetchLatestHtmlFromGitHub();
-            }
+            fetchLatestHtmlFromServer();
             initWebSocket();
         });
     </script>
