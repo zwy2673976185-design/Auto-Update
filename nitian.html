@@ -1,45 +1,393 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>测试交互（显示+点击必生效）</title>
-    <style>
-        .test-btn {
-            margin: 50px auto;
-            display: block;
-            padding: 10px 20px;
-            background: #2563eb;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>商品管理系统（重构版）</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome图标 -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#2563eb',
+            secondary: '#f59e0b',
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+    }
+  </style>
 </head>
-<body>
-    <button class="test-btn" id="showPopup">点击显示弹窗</button>
-    <div class="popup" id="popup">这是测试弹窗，交互正常！</div>
+<body class="bg-gray-50 font-sans">
+  <!-- 顶部导航栏 -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center">
+        <<i class="fa fa-shopping-bag text-primary text-2xl mr-2"></</i>
+        <h1 class="text-xl font-bold text-gray-800">商品管理系统</h1>
+      </div>
+      <div class="relative flex-1 max-w-md mx-4">
+        <input 
+          type="text" 
+          placeholder="搜索商品..." 
+          class="w-full pl-10 pr-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50"
+        />
+        <<i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></</i>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button class="p-2 text-gray-600 hover:text-primary transition-colors">
+          <<i class="fa fa-user text-lg"></</i>
+        </button>
+        <button id="cartBtn" class="relative p-2 text-gray-600 hover:text-primary transition-colors">
+          <<i class="fa fa-shopping-cart text-lg"></</i>
+          <span id="cartCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
 
-    <script>
-        const btn = document.getElementById('showPopup');
-        const popup = document.getElementById('popup');
+  <!-- 分类导航 -->
+  <section class="bg-white py-4">
+    <div class="container mx-auto px-4">
+      <div class="flex overflow-x-auto scrollbar-hide space-x-2 pb-2">
+        <button class="category-btn flex-shrink-0 px-6 py-2 bg-primary text-white rounded-full text-sm font-medium" data-category="all">全部商品</button>
+        <button class="category-btn flex-shrink-0 px-6 py-2 bg-white text-gray-700 rounded-full text-sm font-medium hover:bg-gray-100 transition-colors" data-category="electronics">电子产品</button>
+        <button class="category-btn flex-shrink-0 px-6 py-2 bg-white text-gray-700 rounded-full text-sm font-medium hover:bg-gray-100 transition-colors" data-category="clothing">服装鞋包</button>
+        <button class="category-btn flex-shrink-0 px-6 py-2 bg-white text-gray-700 rounded-full text-sm font-medium hover:bg-gray-100 transition-colors" data-category="home">家居用品</button>
+        <button class="category-btn flex-shrink-0 px-6 py-2 bg-white text-gray-700 rounded-full text-sm font-medium hover:bg-gray-100 transition-colors" data-category="beauty">美妆护肤</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 商品列表 -->
+  <main class="container mx-auto px-4 py-6">
+    <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <!-- 商品卡片将通过JS动态生成 -->
+    </div>
+  </main>
+
+  <!-- 购物车弹窗 -->
+  <div id="cartModal" class="fixed inset-0 bg-black/50 z-50 hidden">
+    <div class="absolute right-0 top-0 w-full max-w-md bg-white h-full shadow-lg transform transition-transform duration-300 ease-in-out">
+      <div class="p-4 border-b flex justify-between items-center">
+        <h2 class="text-xl font-bold">购物车</h2>
+        <button id="closeCart" class="text-gray-500 hover:text-gray-700">
+          <<i class="fa fa-times text-xl"></</i>
+        </button>
+      </div>
+      <div id="cartItems" class="max-h-[calc(100vh-200px)] overflow-y-auto p-4">
+        <div class="text-center text-gray-500 py-10">
+          <<i class="fa fa-shopping-cart text-4xl mb-2"></</i>
+          <p>购物车为空</p>
+        </div>
+      </div>
+      <div class="p-4 border-t">
+        <div class="flex justify-between mb-4">
+          <span class="text-gray-600">商品总价：</span>
+          <span id="cartTotal" class="font-bold">¥0.00</span>
+        </div>
+        <button class="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">结算</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 商品数据
+    const products = [
+      {
+        id: 1,
+        name: "iPhone 14 Pro",
+        price: 7999,
+        image: "https://picsum.photos/300/300?random=1",
+        category: "electronics",
+        stock: 10
+      },
+      {
+        id: 2,
+        name: "三星Galaxy S23",
+        price: 5999,
+        image: "https://picsum.photos/300/300?random=2",
+        category: "electronics",
+        stock: 8
+      },
+      {
+        id: 3,
+        name: "休闲卫衣",
+        price: 199,
+        image: "https://picsum.photos/300/300?random=3",
+        category: "clothing",
+        stock: 20
+      },
+      {
+        id: 4,
+        name: "运动鞋",
+        price: 399,
+        image: "https://picsum.photos/300/300?random=4",
+        category: "clothing",
+        stock: 15
+      },
+      {
+        id: 5,
+        name: "北欧风沙发",
+        price: 2999,
+        image: "https://picsum.photos/300/300?random=5",
+        category: "home",
+        stock: 5
+      },
+      {
+        id: 6,
+        name: "智能台灯",
+        price: 299,
+        image: "https://picsum.photos/300/300?random=6",
+        category: "home",
+        stock: 12
+      },
+      {
+        id: 7,
+        name: "口红礼盒",
+        price: 329,
+        image: "https://picsum.photos/300/300?random=7",
+        category: "beauty",
+        stock: 18
+      },
+      {
+        id: 8,
+        name: "保湿面霜",
+        price: 199,
+        image: "https://picsum.photos/300/300?random=8",
+        category: "beauty",
+        stock: 25
+      }
+    ];
+
+    // 购物车数据
+    let cart = [];
+
+    // DOM元素
+    const productList = document.getElementById('productList');
+    const categoryBtns = document.querySelectorAll('.category-btn');
+    const cartBtn = document.getElementById('cartBtn');
+    const cartModal = document.getElementById('cartModal');
+    const closeCart = document.getElementById('closeCart');
+    const cartItems = document.getElementById('cartItems');
+    const cartCount = document.getElementById('cartCount');
+    const cartTotal = document.getElementById('cartTotal');
+
+    // 渲染商品列表
+    function renderProductList(filterCategory = 'all') {
+      productList.innerHTML = '';
+      const filteredProducts = filterCategory === 'all' 
+        ? products 
+        : products.filter(p => p.category === filterCategory);
+      
+      filteredProducts.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.className = 'bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow';
+        productCard.innerHTML = `
+          <div class="relative">
+            <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover">
+            <div class="absolute top-2 right-2 bg-secondary text-white text-xs font-bold px-2 py-1 rounded">
+              库存: ${product.stock}
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-medium text-gray-800 line-clamp-2 h-12">${product.name}</h3>
+            <div class="flex justify-between items-center mt-2">
+              <span class="text-primary font-bold text-lg">¥${product.price.toFixed(2)}</span>
+              <button class="add-to-cart bg-primary text-white px-3 py-1 rounded hover:bg-primary/90 transition-colors" data-id="${product.id}">
+                <<i class="fa fa-shopping-cart mr-1"></</i>加入购物车
+              </button>
+            </div>
+          </div>
+        `;
+        productList.appendChild(productCard);
+      });
+
+      // 绑定加入购物车事件
+      document.querySelectorAll('.add-to-cart').forEach(btn => {
         btn.addEventListener('click', () => {
-            popup.style.display = 'block';
-            setTimeout(() => {
-                popup.style.display = 'none';
-            }, 3000);
+          const productId = parseInt(btn.getAttribute('data-id'));
+          addToCart(productId);
         });
-    </script>
+      });
+    }
+
+    // 分类切换
+    categoryBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // 切换激活状态
+        categoryBtns.forEach(b => {
+          b.classList.remove('bg-primary', 'text-white');
+          b.classList.add('bg-white', 'text-gray-700');
+        });
+        btn.classList.remove('bg-white', 'text-gray-700');
+        btn.classList.add('bg-primary', 'text-white');
+        
+        // 渲染对应分类商品
+        renderProductList(btn.getAttribute('data-category'));
+      });
+    });
+
+    // 加入购物车
+    function addToCart(productId) {
+      const product = products.find(p => p.id === productId);
+      if (!product) return;
+
+      // 检查库存
+      if (product.stock <= 0) {
+        alert('商品已售罄');
+        return;
+      }
+
+      const existingItem = cart.find(item => item.id === productId);
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        cart.push({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity: 1
+        });
+      }
+
+      updateCartUI();
+      showToast('已加入购物车');
+    }
+
+    // 更新购物车UI
+    function updateCartUI() {
+      cartCount.textContent = cart.reduce((total, item) => total + item.quantity, 0);
+      
+      if (cart.length === 0) {
+        cartItems.innerHTML = `
+          <div class="text-center text-gray-500 py-10">
+            <<i class="fa fa-shopping-cart text-4xl mb-2"></</i>
+            <p>购物车为空</p>
+          </div>
+        `;
+        cartTotal.textContent = '¥0.00';
+        return;
+      }
+
+      cartItems.innerHTML = '';
+      cart.forEach(item => {
+        const cartItem = document.createElement('div');
+        cartItem.className = 'flex border-b pb-4 mb-4 last:border-0 last:mb-0 last:pb-0';
+        cartItem.innerHTML = `
+          <img src="${item.image}" alt="${item.name}" class="w-20 h-20 object-cover rounded mr-4">
+          <div class="flex-1">
+            <h4 class="font-medium text-gray-800 line-clamp-1">${item.name}</h4>
+            <div class="flex justify-between items-center mt-2">
+              <span class="text-primary font-bold">¥${item.price.toFixed(2)}</span>
+              <div class="flex items-center border rounded">
+                <button class="decrease-qty w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700" data-id="${item.id}">
+                  <<i class="fa fa-minus"></</i>
+                </button>
+                <span class="w-8 text-center">${item.quantity}</span>
+                <button class="increase-qty w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700" data-id="${item.id}">
+                  <<i class="fa fa-plus"></</i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        cartItems.appendChild(cartItem);
+      });
+
+      // 计算总价
+      const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      cartTotal.textContent = `¥${total.toFixed(2)}`;
+
+      // 绑定数量变更事件
+      document.querySelectorAll('.decrease-qty').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const productId = parseInt(btn.getAttribute('data-id'));
+          decreaseQuantity(productId);
+        });
+      });
+
+      document.querySelectorAll('.increase-qty').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const productId = parseInt(btn.getAttribute('data-id'));
+          increaseQuantity(productId);
+        });
+      });
+    }
+
+    // 减少数量
+    function decreaseQuantity(productId) {
+      const item = cart.find(item => item.id === productId);
+      if (item.quantity > 1) {
+        item.quantity -= 1;
+      } else {
+        cart = cart.filter(item => item.id !== productId);
+      }
+      updateCartUI();
+    }
+
+    // 增加数量
+    function increaseQuantity(productId) {
+      const product = products.find(p => p.id === productId);
+      const item = cart.find(item => item.id === productId);
+      if (item.quantity >= product.stock) {
+        alert('库存不足');
+        return;
+      }
+      item.quantity += 1;
+      updateCartUI();
+    }
+
+    // 显示提示 toast
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => {
+          document.body.removeChild(toast);
+        }, 300);
+      }, 2000);
+    }
+
+    // 购物车弹窗控制
+    cartBtn.addEventListener('click', () => {
+      cartModal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    });
+
+    closeCart.addEventListener('click', () => {
+      cartModal.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    });
+
+    // 点击弹窗背景关闭
+    cartModal.addEventListener('click', (e) => {
+      if (e.target === cartModal) {
+        cartModal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+      }
+    });
+
+    // 初始化页面
+    window.addEventListener('DOMContentLoaded', () => {
+      renderProductList();
+      updateCartUI();
+    });
+  </script>
 </body>
 </html>
